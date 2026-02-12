@@ -30,8 +30,22 @@
                 box-shadow: none !important;
                 border: none !important;
             }
-            .page-break { page-break-after: always; }
-            /* 背景色を印刷に反映 */
+            /* 印刷時は入力欄の枠を消して値だけ見えるように調整 */
+            input, select, textarea {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                font-weight: bold !important;
+                appearance: none !important;
+            }
+            /* レイアウト調整: 1カラム化 */
+            .grid { display: block !important; }
+            section { 
+                margin-bottom: 20px !important; 
+                break-inside: avoid; 
+                border: 1px solid #e2e8f0 !important;
+            }
+            /* 背景色と色を強制反映 */
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         .print-only { display: none; }
@@ -61,7 +75,6 @@
         const ArrowDown = (props) => <Icon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></Icon>;
         const Printer = (props) => <Icon {...props}><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></Icon>;
 
-        // --- ロジック ---
         const TIME_UNITS = {
             days: { label: '日', toSeconds: 86400 },
             minutes: { label: '分', toSeconds: 60 },
@@ -120,6 +133,7 @@
                 return now.toISOString().slice(0, 19);
             });
 
+            // 既知のデータ
             const [refAmount, setRefAmount] = useState(1000);
             const [refDate, setRefDate] = useState(() => {
                 const now = new Date();
@@ -133,6 +147,7 @@
                 return now.toISOString().slice(0, 19);
             });
 
+            // time2用の差し引き量（残量）と測定日時
             const [minusAmount, setMinusAmount] = useState(0);
             const [minusDate, setMinusDate] = useState(() => {
                 const now = new Date();
@@ -140,8 +155,12 @@
                 return now.toISOString().slice(0, 19);
             });
 
+            // 時計のズレ (秒単位)
             const [clockDrift, setClockDrift] = useState(0);
+
+            // 目標放射能量
             const [targetAmount, setTargetAmount] = useState(500);
+            // 許容誤差(%)
             const [marginPercent, setMarginPercent] = useState(5);
 
             const [presets] = useState([{ id: '1', label: '18F', value: 109.77, unit: 'minutes' }]);
@@ -164,6 +183,7 @@
                 let currentRemaining = 0;
                 let baseDateObj = new Date();
                 let targetDateObj = new Date();
+                
                 let plusResults = null;
                 let minusResults = null;
                 let effectiveStartAmount = 0;
@@ -329,10 +349,10 @@
                         <div className="print-only border-b-2 border-slate-900 mb-8 pb-4">
                             <h1 className="text-2xl font-bold">減衰計算 結果報告書</h1>
                             <div className="flex justify-between mt-2 text-sm">
-                                <span>計算種別: {
-                                    mainMode === 'amount' ? '残存量計算' : 
-                                    mainMode === 'time' ? '時間計算' : 
-                                    mainMode === 'activity' ? '放射能量予測' : '時間計算 (140)'
+                                <span>計算項目: {
+                                    mainMode === 'amount' ? '残存量を求める' : 
+                                    mainMode === 'time' ? '時間を求める' : 
+                                    mainMode === 'activity' ? '放射能量を求める' : '時間を求める（ 140 ）'
                                 }</span>
                                 <span>核種: 18F (半減期: 109.77分)</span>
                                 <span>出力日時: {new Date().toLocaleString()}</span>
@@ -354,13 +374,17 @@
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="lg:col-span-5 space-y-6 no-print">
+                            {/* 左カラム: パラメータ設定 */}
+                            <div className="lg:col-span-5 space-y-6">
                                 <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 no-print"></div>
                                     
-                                    <div className="flex justify-between items-center mb-4 no-print">
-                                        <h2 className="flex items-center gap-2 font-bold text-sm text-slate-700"><RefreshCw className="w-4 h-4 text-blue-500" /> パラメータ設定</h2>
-                                        <div className="flex items-center gap-3">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="flex items-center gap-2 font-bold text-sm text-slate-700">
+                                            <RefreshCw className="w-4 h-4 text-blue-500 no-print" /> 
+                                            設定条件
+                                        </h2>
+                                        <div className="flex items-center gap-3 no-print">
                                             {mainMode === 'time2' && (
                                                 <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm">
                                                     <label className="text-[10px] font-bold text-blue-800 whitespace-nowrap">時計2 ズレ(秒):</label>
@@ -368,112 +392,136 @@
                                                 </div>
                                             )}
                                             <button onClick={handlePrint} className="flex items-center gap-1 bg-slate-800 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-900 transition-colors shadow-sm whitespace-nowrap">
-                                                <Printer className="w-3.5 h-3.5" /> 印刷
+                                                <Printer className="w-3.5 h-3.5" /> 印刷 (PDF)
                                             </button>
                                         </div>
+                                        {/* 印刷用ズレ表示 */}
+                                        {mainMode === 'time2' && clockDrift !== 0 && <div className="print-only text-xs text-blue-700 font-bold italic">時計2の補正: {clockDrift > 0 ? '+' : ''}{clockDrift}秒</div>}
                                     </div>
 
-                                    {(mainMode === 'activity' || mainMode === 'time2') ? (
-                                        <div className="space-y-4">
-                                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                <label className="block text-[10px] font-bold text-blue-800 mb-1">既知の情報 (基準データ)</label>
-                                                <div className="flex gap-2 mb-2">
-                                                    <input type="number" value={refAmount} onChange={(e) => setRefAmount(Number(e.target.value))} className="w-full px-2 py-1.5 border border-blue-200 rounded text-sm" />
-                                                    <span className="text-xs self-center font-bold text-blue-600">MBq</span>
+                                    <div className="space-y-4">
+                                        {(mainMode === 'activity' || mainMode === 'time2') ? (
+                                            <React.Fragment>
+                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 print:bg-white print:border-slate-300">
+                                                    <label className="block text-[10px] font-bold text-blue-800 mb-1">既知の情報 (基準点)</label>
+                                                    <div className="flex gap-2 mb-2 print:mb-1">
+                                                        <input type="number" value={refAmount} onChange={(e) => setRefAmount(Number(e.target.value))} className="w-full px-2 py-1.5 border border-blue-200 rounded text-sm" />
+                                                        <span className="text-xs self-center font-bold text-blue-600 print:text-black">MBq</span>
+                                                    </div>
+                                                    <input type="datetime-local" step="1" value={refDate} onChange={(e) => setRefDate(e.target.value)} className="w-full px-2 py-1.5 border border-blue-200 rounded text-sm mb-1" />
+                                                    {mainMode === 'time2' && clockDrift !== 0 && (
+                                                        <div className="px-1 text-[9px] text-blue-500 flex justify-between items-center print:text-blue-700">
+                                                            <span>時計2(補正後):</span>
+                                                            <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedBaseDateObj) : '-'}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <input type="datetime-local" step="1" value={refDate} onChange={(e) => setRefDate(e.target.value)} className="w-full px-2 py-1.5 border border-blue-200 rounded text-sm mb-1" />
-                                                {mainMode === 'time2' && (
-                                                    <div className="px-1 text-[9px] text-blue-500 flex justify-between items-center">
-                                                        <span>時計2反映:</span>
-                                                        <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedBaseDateObj) : '-'}</span>
-                                                    </div>
-                                                )}
-                                            </div>
 
-                                            {mainMode === 'time2' && (
-                                                <React.Fragment>
-                                                    <div className="flex flex-col items-center py-1">
-                                                        <ArrowDown className="w-4 h-4 text-slate-300" />
-                                                    </div>
-                                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                                {mainMode === 'time2' && (
+                                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 print:bg-white print:border-slate-300">
                                                         <label className="block text-[10px] font-bold text-indigo-800 mb-1">残量 (差し引き分)</label>
                                                         <div className="grid grid-cols-1 gap-2">
                                                             <div className="flex gap-2 items-center">
-                                                                <input type="number" value={minusAmount} onChange={(e) => setMinusAmount(Number(e.target.value))} className="w-full px-2 py-1.5 border border-indigo-200 rounded text-sm bg-white" placeholder="量" />
-                                                                <span className="text-xs font-bold text-indigo-600">MBq</span>
+                                                                <input type="number" value={minusAmount} onChange={(e) => setMinusAmount(Number(e.target.value))} className="w-full px-2 py-1.5 border border-indigo-200 rounded text-sm bg-white" />
+                                                                <span className="text-xs font-bold text-indigo-600 print:text-black">MBq</span>
                                                             </div>
                                                             <div className="flex flex-col gap-1">
                                                                 <label className="text-[9px] text-indigo-400">測定日時</label>
                                                                 <input type="datetime-local" step="1" value={minusDate} onChange={(e) => setMinusDate(e.target.value)} className="w-full px-2 py-1 border border-indigo-200 rounded text-xs mb-1" />
-                                                                <div className="px-1 text-[9px] text-indigo-500 flex justify-between items-center">
-                                                                    <span>時計2反映:</span>
-                                                                    <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedMinusDateObj) : '-'}</span>
-                                                                </div>
+                                                                {clockDrift !== 0 && (
+                                                                    <div className="px-1 text-[9px] text-indigo-500 flex justify-between items-center print:text-indigo-700">
+                                                                        <span>時計2(補正後):</span>
+                                                                        <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedMinusDateObj) : '-'}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                        <div className="mt-2 text-[10px] text-indigo-500 flex flex-col gap-0.5 px-1 border-t border-indigo-100 pt-2">
+                                                        <div className="mt-2 text-[10px] text-indigo-500 flex flex-col gap-0.5 px-1 border-t border-indigo-100 pt-2 print:text-black">
                                                             <div className="flex justify-between italic">
                                                                 <span>補正後の基準時放射能量:</span>
                                                                 <span className="font-bold">{results ? formatNumber(results.effectiveStartAmount) : '-'} MBq</span>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </React.Fragment>
-                                            )}
+                                                )}
 
-                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                                                    {mainMode === 'activity' ? '求めたい日時' : '目標の放射能量'}
-                                                </label>
-                                                {mainMode === 'activity' ? (
-                                                    <input type="datetime-local" step="1" value={targetActivityDate} onChange={(e) => setTargetActivityDate(e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                                                ) : (
-                                                    <div className="space-y-3">
-                                                        <div className="flex gap-2">
-                                                            <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                                                            <span className="text-xs self-center font-bold text-slate-500">MBq</span>
+                                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 print:bg-white print:border-slate-300">
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                                                        {mainMode === 'activity' ? '求めたい日時' : '目標放射能量'}
+                                                    </label>
+                                                    {mainMode === 'activity' ? (
+                                                        <input type="datetime-local" step="1" value={targetActivityDate} onChange={(e) => setTargetActivityDate(e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm font-bold" />
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            <div className="flex gap-2">
+                                                                <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm font-bold" />
+                                                                <span className="text-xs self-center font-bold text-slate-500 print:text-black">MBq</span>
+                                                            </div>
+                                                            {mainMode === 'time2' && (
+                                                                <div className="pt-2 border-t border-slate-200">
+                                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1">許容誤差 (%) <span className="font-normal text-slate-400">±{marginPercent}%</span></label>
+                                                                    <input type="range" min="0" max="20" step="0.1" value={marginPercent} onChange={(e) => setMarginPercent(Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 no-print" />
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="pt-2 border-t border-slate-200">
-                                                            <label className="block text-[10px] font-bold text-slate-500 mb-1 flex items-center gap-1">許容誤差 (%) <span className="font-normal text-slate-400">±{marginPercent}%</span></label>
-                                                            <input type="range" min="0" max="20" step="0.1" value={marginPercent} onChange={(e) => setMarginPercent(Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                                                    )}
+                                                </div>
+                                            </React.Fragment>
+                                        ) : (
+                                            <React.Fragment>
+                                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 print:bg-white print:border-slate-300">
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">基準日時 (t=0)</label>
+                                                    <input type="datetime-local" step="1" value={baseDate} onChange={(e) => setBaseDate(e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm font-bold" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-slate-50 p-2 rounded border border-slate-100 print:bg-white print:border-slate-300">
+                                                        <label className="block text-[10px] font-medium text-slate-600 mb-1">初期量 (N₀)</label>
+                                                        <div className="flex gap-1 items-center">
+                                                            <input type="number" value={initialAmount} onChange={(e) => setInitialAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1 border-none bg-transparent text-sm font-bold" />
+                                                            <span className="text-[10px] font-bold">MBq</span>
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">基準日時 (t=0)</label>
-                                                <input type="datetime-local" step="1" value={baseDate} onChange={(e) => setBaseDate(e.target.value)} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-[10px] font-medium text-slate-600 mb-1">初期量 (N₀)</label>
-                                                    <input type="number" value={initialAmount} onChange={(e) => setInitialAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+                                                    {mainMode === 'time' ? (
+                                                        <div className="bg-amber-50 p-2 rounded border border-amber-100 print:bg-white print:border-slate-300">
+                                                            <label className="block text-[10px] font-medium text-amber-700 mb-1">目標量 (N)</label>
+                                                            <div className="flex gap-1 items-center">
+                                                                <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1 border-none bg-transparent text-sm font-bold" />
+                                                                <span className="text-[10px] font-bold">MBq</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-blue-50 p-2 rounded border border-blue-100 print:bg-white print:border-slate-300">
+                                                            <label className="block text-[10px] font-medium text-blue-700 mb-1">経過時間</label>
+                                                            <div className="flex gap-1 items-center">
+                                                                <input type="number" value={elapsedTime} onChange={(e) => setElapsedTime(Number(e.target.value))} className="w-full px-2 py-1 border-none bg-transparent text-sm font-bold" />
+                                                                <select value={elapsedTimeUnit} onChange={(e) => setElapsedTimeUnit(e.target.value)} className="text-[10px] font-bold bg-transparent">
+                                                                    {Object.entries(TIME_UNITS).map(([k, u]) => <option key={k} value={k}>{u.label}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-medium text-slate-600 mb-1">目標量 (N)</label>
-                                                    <input type="number" disabled={mainMode !== 'time'} value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm disabled:bg-slate-100" />
-                                                </div>
+                                            </React.Fragment>
+                                        )}
+                                        
+                                        <div className="mt-4 pt-4 border-t border-slate-100 print:mt-2">
+                                            <label className="block text-[10px] font-medium text-slate-600 mb-1">核種 半減期 (T₁/₂)</label>
+                                            <div className="flex gap-2">
+                                                <input type="number" value={halfLife} onChange={(e) => setHalfLife(Math.max(0.001, Number(e.target.value)))} className="flex-1 px-2 py-1.5 border border-slate-300 rounded text-sm font-bold" />
+                                                <select value={halfLifeUnit} onChange={(e) => setHalfLifeUnit(e.target.value)} className="w-20 px-1 py-1.5 border border-slate-300 rounded text-xs bg-slate-50 font-bold">
+                                                    {Object.entries(TIME_UNITS).map(([k, u]) => <option key={k} value={k}>{u.label}</option>)}
+                                                </select>
                                             </div>
-                                        </div>
-                                    )}
-
-                                    <div className="mt-4 pt-4 border-t border-slate-100">
-                                        <label className="block text-[10px] font-medium text-slate-600 mb-1">半減期 (T₁/₂)</label>
-                                        <div className="flex gap-2">
-                                            <input type="number" value={halfLife} onChange={(e) => setHalfLife(Math.max(0.001, Number(e.target.value)))} className="flex-1 px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                                            <select value={halfLifeUnit} onChange={(e) => setHalfLifeUnit(e.target.value)} className="w-20 px-1 py-1.5 border border-slate-300 rounded text-xs bg-slate-50">
-                                                {Object.entries(TIME_UNITS).map(([k, u]) => <option key={k} value={k}>{u.label}</option>)}
-                                            </select>
                                         </div>
                                     </div>
                                 </section>
                             </div>
 
+                            {/* 右カラム: 計算結果 */}
                             <div className="lg:col-span-7 space-y-6 lg:col-span-12 print:w-full">
                                 <section className="space-y-4">
+                                    <h2 className="text-sm font-bold text-slate-700 no-print">計算結果</h2>
+
                                     <div className={`bg-white p-5 rounded-xl shadow-sm border-l-4 ${mainMode.includes('time') ? 'border-amber-500' : 'border-blue-500'}`}>
                                         <p className="text-[10px] text-slate-500 mb-1">
                                             {mainMode.includes('time') ? '目標放射能量に到達するまでの時間' : '計算された放射能量 (MBq)'}
@@ -482,73 +530,81 @@
                                             {results ? (mainMode.includes('time') ? (isDetailedTime ? formatDurationDetailed(results.elapsedInSeconds) : formatDurationSimple(results.elapsedInSeconds)) : formatNumber(results.remaining)) : '-'}
                                         </p>
                                         <div className="flex justify-between items-center mt-2 no-print">
-                                            <p className="text-[10px] text-slate-400">計算点に対する割合: {results ? results.percentage.toFixed(4) : '-'} %</p>
+                                            <p className="text-[10px] text-slate-400">開始点に対する割合: {results ? results.percentage.toFixed(4) : '-'} %</p>
                                             <label className="inline-flex items-center gap-1 cursor-pointer">
                                                 <input type="checkbox" checked={isDetailedTime} onChange={(e) => setIsDetailedTime(e.target.checked)} className="w-3 h-3" />
                                                 <span className="text-[9px] text-slate-400">詳細形式</span>
                                             </label>
                                         </div>
+                                        {/* 印刷用詳細テキスト */}
+                                        <div className="print-only text-[10px] text-slate-500 mt-1">基準値比: {results ? results.percentage.toFixed(4) : '-'}%</div>
                                     </div>
 
                                     {/* 到着予測日時 */}
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 print:bg-white print:border-slate-800">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 print:bg-white print:border-slate-800 shadow-sm">
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-[11px] text-slate-600"><Clock className="w-3 h-3"/> 時計1（基準）予測日時</div>
-                                                <span className="text-sm md:text-lg font-mono text-slate-700">{results ? formatDate(results.targetDateObj) : '-'}</span>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-600">
+                                                    <Clock className="w-3 h-3 no-print"/> 
+                                                    {mainMode === 'time2' ? '時計1（基準）予測日時' : '到達予測日時'}
+                                                </div>
+                                                <span className="text-sm md:text-lg font-mono text-slate-700 font-bold">{results ? formatDate(results.targetDateObj) : '-'}</span>
                                             </div>
-                                            <div className="h-px bg-slate-200 w-full print:bg-slate-400"></div>
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-[12px] font-bold text-blue-600"><Clock className="w-4 h-4"/> 時計2（補正後）予測日時</div>
-                                                <span className="text-xl md:text-3xl font-mono font-bold text-blue-700">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
-                                            </div>
+                                            
+                                            {mainMode === 'time2' && (
+                                                <React.Fragment>
+                                                    <div className="h-px bg-slate-200 w-full print:bg-slate-400"></div>
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-2 text-[12px] font-bold text-blue-600"><Clock className="w-4 h-4 no-print"/> 時計2（補正後）予測日時</div>
+                                                        <span className="text-xl md:text-3xl font-mono font-bold text-blue-700">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
+                                                    </div>
+                                                </React.Fragment>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* 誤差範囲の表示 */}
+                                    {/* 誤差範囲 (140モードのみ) */}
                                     {mainMode === 'time2' && results && results.plusResults && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <p className="text-[10px] font-bold text-indigo-600">誤差上限 (+{marginPercent}%)</p>
-                                                    <span className="text-xs font-bold text-slate-700">{formatNumber(results.plusResults.amount)} MBq</span>
+                                        <React.Fragment>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <p className="text-[10px] font-bold text-indigo-600">誤差上限 (+{marginPercent}%)</p>
+                                                        <span className="text-xs font-bold text-slate-700">{formatNumber(results.plusResults.amount)} MBq</span>
+                                                    </div>
+                                                    <div className="space-y-1 text-[10px]">
+                                                        <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.plusResults.date)}</span></div>
+                                                        <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em] font-mono">{formatDate(results.plusResults.adjustedDate)}</span></div>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-1 text-[10px]">
-                                                    <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.plusResults.date)}</span></div>
-                                                    <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em]">{formatDate(results.plusResults.adjustedDate)}</span></div>
+                                                <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <p className="text-[10px] font-bold text-indigo-600">誤差下限 (-{marginPercent}%)</p>
+                                                        <span className="text-xs font-bold text-slate-700">{formatNumber(results.minusResults.amount)} MBq</span>
+                                                    </div>
+                                                    <div className="space-y-1 text-[10px]">
+                                                        <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.minusResults.date)}</span></div>
+                                                        <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em] font-mono">{formatDate(results.minusResults.adjustedDate)}</span></div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <p className="text-[10px] font-bold text-indigo-600">誤差下限 (-{marginPercent}%)</p>
-                                                    <span className="text-xs font-bold text-slate-700">{formatNumber(results.minusResults.amount)} MBq</span>
-                                                </div>
-                                                <div className="space-y-1 text-[10px]">
-                                                    <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.minusResults.date)}</span></div>
-                                                    <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em]">{formatDate(results.minusResults.adjustedDate)}</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
-                                    {mainMode === 'time2' && results && results.plusResults && (
-                                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2 print:bg-white print:border-slate-800">
-                                            <AlertCircle className="w-5 h-5 text-indigo-500 mt-0.5 no-print" />
-                                            <div className="text-[11px] text-indigo-700 leading-relaxed print:text-slate-900">
-                                                <span className="font-bold border-b border-indigo-300">時計2 許容範囲帯 (±{marginPercent}%) :</span><br/>
-                                                <div className="mt-1 flex items-baseline gap-2">
-                                                    <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.plusResults.adjustedDate).split(' ')[1]}</span>
-                                                    <span className="text-slate-400">〜</span>
-                                                    <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.minusResults.adjustedDate).split(' ')[1]}</span>
-                                                </div>
-                                                <div className="mt-1 text-[10px] opacity-70">
-                                                    日付: {formatDate(results.plusResults.adjustedDate).split(' ')[0]}
+                                            <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2 print:bg-white print:border-slate-800">
+                                                <AlertCircle className="w-5 h-5 text-indigo-500 mt-0.5 no-print" />
+                                                <div className="text-[11px] text-indigo-700 leading-relaxed print:text-slate-900 w-full">
+                                                    <span className="font-bold border-b border-indigo-300 print:border-slate-400">時計2 許容範囲帯 (±{marginPercent}%) :</span><br/>
+                                                    <div className="mt-1 flex items-baseline gap-2 print:justify-center">
+                                                        <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.plusResults.adjustedDate).split(' ')[1]}</span>
+                                                        <span className="text-slate-400">〜</span>
+                                                        <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.minusResults.adjustedDate).split(' ')[1]}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </React.Fragment>
                                     )}
                                 </section>
 
+                                {/* グラフセクション (印刷時は常に非表示) */}
                                 <section className="no-print bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                                     <h3 className="font-bold text-xs text-slate-700 flex items-center gap-2 mb-4"><Activity className="w-4 h-4 text-slate-400" /> 減衰グラフ</h3>
                                     <Graph />
@@ -556,7 +612,7 @@
 
                                 {/* 印刷用フッター */}
                                 <div className="print-only mt-12 pt-4 border-t border-slate-300 text-[10px] text-slate-500 text-center">
-                                    放射性医薬品減衰計算システム - 本資料は計算上の予測値です。実際の測定値と異なる場合があります。
+                                    放射性医薬品減衰計算システム - 本資料は計算上の予測値であり、測定環境や機器により誤差が生じる場合があります。
                                 </div>
                             </div>
                         </div>
