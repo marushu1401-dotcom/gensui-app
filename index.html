@@ -17,6 +17,24 @@
 
     <style>
         body { font-family: sans-serif; }
+        
+        /* 印刷用設定 */
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white !important; }
+            .print-only { display: block !important; }
+            .print-container { 
+                width: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .page-break { page-break-after: always; }
+            /* 背景色を印刷に反映 */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+        .print-only { display: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -41,6 +59,7 @@
         const AlertCircle = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></Icon>;
         const Clock = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></Icon>;
         const ArrowDown = (props) => <Icon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></Icon>;
+        const Printer = (props) => <Icon {...props}><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></Icon>;
 
         // --- ロジック ---
         const TIME_UNITS = {
@@ -101,7 +120,6 @@
                 return now.toISOString().slice(0, 19);
             });
 
-            // 既知のデータ
             const [refAmount, setRefAmount] = useState(1000);
             const [refDate, setRefDate] = useState(() => {
                 const now = new Date();
@@ -115,7 +133,6 @@
                 return now.toISOString().slice(0, 19);
             });
 
-            // 差し引き量（残量）と測定日時
             const [minusAmount, setMinusAmount] = useState(0);
             const [minusDate, setMinusDate] = useState(() => {
                 const now = new Date();
@@ -123,18 +140,11 @@
                 return now.toISOString().slice(0, 19);
             });
 
-            // 時計のズレ (秒単位)
             const [clockDrift, setClockDrift] = useState(0);
-
-            // 目標放射能量
             const [targetAmount, setTargetAmount] = useState(500);
-            // 許容誤差(%)
             const [marginPercent, setMarginPercent] = useState(5);
 
-            const [presets] = useState([
-                { id: '1', label: '18F', value: 109.77, unit: 'minutes' },
-            ]);
-
+            const [presets] = useState([{ id: '1', label: '18F', value: 109.77, unit: 'minutes' }]);
             const [mainMode, setMainMode] = useState('amount'); // amount, time, activity, time2
             const [calcMode, setCalcMode] = useState('relative');
             const [elapsedTime, setElapsedTime] = useState(60);
@@ -154,12 +164,10 @@
                 let currentRemaining = 0;
                 let baseDateObj = new Date();
                 let targetDateObj = new Date();
-                
                 let plusResults = null;
                 let minusResults = null;
                 let effectiveStartAmount = 0;
 
-                // 入力した基準日時
                 const rDateObj = new Date(refDate);
                 const mDateObj = new Date(minusDate);
 
@@ -195,12 +203,8 @@
                     const rDate = rDateObj;
                     const mDate = mDateObj;
                     baseDateObj = rDate;
-
-                    // 残量を「既知の情報の日時」時点の値に換算
                     const elapsedMinusToRef = (rDate.getTime() - mDate.getTime()) / 1000;
                     const effectiveMinusAmountAtRef = minusAmount * Math.pow(0.5, elapsedMinusToRef / hlSeconds);
-
-                    // 既知の量から残量を差し引く
                     effectiveStartAmount = refAmount - effectiveMinusAmountAtRef;
 
                     const calcTimeForAmt = (amt) => {
@@ -213,7 +217,6 @@
                     targetDateObj = new Date(rDate.getTime() + elapsedInSeconds * 1000);
                     currentRemaining = targetAmount;
 
-                    // プラス誤差
                     const amtPlus = targetAmount * (1 + marginPercent / 100);
                     const elapsedPlus = calcTimeForAmt(amtPlus);
                     const datePlus = new Date(rDate.getTime() + elapsedPlus * 1000);
@@ -224,7 +227,6 @@
                         adjustedDate: new Date(datePlus.getTime() + clockDrift * 1000)
                     };
 
-                    // マイナス誤差
                     const amtMinus = targetAmount * (1 - marginPercent / 100);
                     const elapsedMinus = calcTimeForAmt(amtMinus);
                     const dateMinus = new Date(rDate.getTime() + elapsedMinus * 1000);
@@ -248,12 +250,12 @@
                     baseDateObj,
                     targetDateObj,
                     effectiveStartAmount,
-                    // 時計補正後の全データ
                     adjustedBaseDateObj: new Date(baseDateObj.getTime() + clockDrift * 1000),
                     adjustedMinusDateObj: new Date(mDateObj.getTime() + clockDrift * 1000),
                     adjustedTargetDateObj: new Date(targetDateObj.getTime() + clockDrift * 1000),
                     plusResults,
-                    minusResults
+                    minusResults,
+                    baseValForStats
                 };
             }, [initialAmount, halfLife, halfLifeUnit, mainMode, calcMode, elapsedTime, elapsedTimeUnit, baseDate, targetDateInput, targetAmount, refAmount, refDate, targetActivityDate, marginPercent, clockDrift, minusAmount, minusDate]);
 
@@ -261,10 +263,7 @@
                 if (!results) return [];
                 const t = results.elapsedInSeconds;
                 const hl = results.halfLifeInSeconds;
-                const baseVal = (mainMode === 'activity' || mainMode === 'time2') 
-                    ? (mainMode === 'time2' ? results.effectiveStartAmount : refAmount) 
-                    : initialAmount;
-                
+                const baseVal = results.baseValForStats;
                 let minTime = Math.min(0, t);
                 let maxTime = Math.max(hl * 3, t * 1.5);
                 if (t >= 0) {
@@ -274,7 +273,6 @@
                     minTime = t * 1.2;
                     maxTime = hl * 3;
                 }
-
                 const points = [];
                 const steps = 100;
                 const totalRange = maxTime - minTime;
@@ -284,24 +282,25 @@
                     points.push({ t: time, amount });
                 }
                 return { points, minTime, maxTime, totalRange };
-            }, [results, initialAmount, refAmount, mainMode]);
+            }, [results]);
+
+            const handlePrint = () => {
+                window.print();
+            };
 
             const Graph = () => {
                 if (!results || chartData.points.length === 0) return null;
                 const width = 600;
                 const height = 240;
                 const padding = 40;
-                const baseVal = (mainMode === 'activity' || mainMode === 'time2') 
-                    ? (mainMode === 'time2' ? results.effectiveStartAmount : refAmount) 
-                    : initialAmount;
+                const baseVal = results.baseValForStats;
                 const maxYData = Math.max(baseVal, ...chartData.points.map(p => p.amount));
                 const yAxisMax = maxYData * 1.1;
                 const getX = (t) => padding + ((t - chartData.minTime) / chartData.totalRange) * (width - padding * 2);
                 const getY = (amt) => height - padding - (amt / yAxisMax) * (height - padding * 2);
                 const pathD = `M ${chartData.points.map(p => `${getX(p.t)},${getY(p.amount)}`).join(' L ')}`;
-
                 return (
-                    <div className="w-full bg-white rounded-lg shadow-inner border border-slate-200">
+                    <div className="w-full bg-white rounded-lg shadow-inner border border-slate-200 no-print">
                         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto text-[10px]">
                             <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="#cbd5e1" strokeWidth="2" />
                             <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="#cbd5e1" strokeWidth="2" />
@@ -315,17 +314,33 @@
 
             return (
                 <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
-                    <div className="max-w-6xl mx-auto">
-                        <header className="mb-6 flex items-center gap-3">
-                            <div className="p-3 bg-blue-600 rounded-lg shadow-lg"><Activity className="w-6 h-6 text-white" /></div>
-                            <div>
-                                <h1 className="text-xl font-bold text-slate-900">減衰計算表</h1>
-                                <p className="text-slate-500 text-xs">Radioactive Decay Calculator</p>
+                    <div className="max-w-6xl mx-auto print-container">
+                        <header className="mb-6 flex items-center justify-between no-print">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-blue-600 rounded-lg shadow-lg"><Activity className="w-6 h-6 text-white" /></div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-slate-900">減衰計算表</h1>
+                                    <p className="text-slate-500 text-xs">Radioactive Decay Calculator</p>
+                                </div>
                             </div>
                         </header>
 
+                        {/* 印刷時のみ表示されるヘッダー */}
+                        <div className="print-only border-b-2 border-slate-900 mb-8 pb-4">
+                            <h1 className="text-2xl font-bold">減衰計算 結果報告書</h1>
+                            <div className="flex justify-between mt-2 text-sm">
+                                <span>計算種別: {
+                                    mainMode === 'amount' ? '残存量計算' : 
+                                    mainMode === 'time' ? '時間計算' : 
+                                    mainMode === 'activity' ? '放射能量予測' : '時間計算 (140)'
+                                }</span>
+                                <span>核種: 18F (半減期: 109.77分)</span>
+                                <span>出力日時: {new Date().toLocaleString()}</span>
+                            </div>
+                        </div>
+
                         {/* タブナビゲーション */}
-                        <div className="flex flex-wrap md:flex-nowrap rounded-xl bg-white shadow-sm border border-slate-200 p-1 mb-6 gap-1">
+                        <div className="flex flex-wrap md:flex-nowrap rounded-xl bg-white shadow-sm border border-slate-200 p-1 mb-6 gap-1 no-print">
                             {[
                                 { id: 'amount', label: '残存量を求める', icon: Calculator },
                                 { id: 'time', label: '時間を求める', icon: Hourglass },
@@ -339,22 +354,27 @@
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            <div className="lg:col-span-5 space-y-6">
+                            <div className="lg:col-span-5 space-y-6 no-print">
                                 <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                                     
-                                    <div className="flex justify-between items-center mb-4">
+                                    <div className="flex justify-between items-center mb-4 no-print">
                                         <h2 className="flex items-center gap-2 font-bold text-sm text-slate-700"><RefreshCw className="w-4 h-4 text-blue-500" /> パラメータ設定</h2>
-                                        {mainMode === 'time2' && (
-                                            <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm">
-                                                <label className="text-[10px] font-bold text-blue-800 whitespace-nowrap">時計2 ズレ(秒):</label>
-                                                <input type="number" value={clockDrift} onChange={(e) => setClockDrift(Number(e.target.value))} className="w-14 px-1 py-0.5 border border-blue-200 rounded text-xs text-center font-bold text-blue-700" />
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-3">
+                                            {mainMode === 'time2' && (
+                                                <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm">
+                                                    <label className="text-[10px] font-bold text-blue-800 whitespace-nowrap">時計2 ズレ(秒):</label>
+                                                    <input type="number" value={clockDrift} onChange={(e) => setClockDrift(Number(e.target.value))} className="w-14 px-1 py-0.5 border border-blue-200 rounded text-xs text-center font-bold text-blue-700" />
+                                                </div>
+                                            )}
+                                            <button onClick={handlePrint} className="flex items-center gap-1 bg-slate-800 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold hover:bg-slate-900 transition-colors shadow-sm whitespace-nowrap">
+                                                <Printer className="w-3.5 h-3.5" /> 印刷
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {(mainMode === 'activity' || mainMode === 'time2') ? (
-                                        <div className="space-y-4 animate-in fade-in duration-300">
+                                        <div className="space-y-4">
                                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                                                 <label className="block text-[10px] font-bold text-blue-800 mb-1">既知の情報 (基準データ)</label>
                                                 <div className="flex gap-2 mb-2">
@@ -363,9 +383,9 @@
                                                 </div>
                                                 <input type="datetime-local" step="1" value={refDate} onChange={(e) => setRefDate(e.target.value)} className="w-full px-2 py-1.5 border border-blue-200 rounded text-sm mb-1" />
                                                 {mainMode === 'time2' && (
-                                                    <div className="px-1 text-[9px] text-blue-400 flex justify-between">
+                                                    <div className="px-1 text-[9px] text-blue-500 flex justify-between items-center">
                                                         <span>時計2反映:</span>
-                                                        <span className="font-bold">{results ? formatDate(results.adjustedBaseDateObj) : '-'}</span>
+                                                        <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedBaseDateObj) : '-'}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -385,9 +405,9 @@
                                                             <div className="flex flex-col gap-1">
                                                                 <label className="text-[9px] text-indigo-400">測定日時</label>
                                                                 <input type="datetime-local" step="1" value={minusDate} onChange={(e) => setMinusDate(e.target.value)} className="w-full px-2 py-1 border border-indigo-200 rounded text-xs mb-1" />
-                                                                <div className="px-1 text-[9px] text-indigo-400 flex justify-between">
+                                                                <div className="px-1 text-[9px] text-indigo-500 flex justify-between items-center">
                                                                     <span>時計2反映:</span>
-                                                                    <span className="font-bold">{results ? formatDate(results.adjustedMinusDateObj) : '-'}</span>
+                                                                    <span className="font-bold text-[1.2em]">{results ? formatDate(results.adjustedMinusDateObj) : '-'}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -430,27 +450,13 @@
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-[10px] font-medium text-slate-600 mb-1">初期量 (N₀)</label>
-                                                    <div className="flex gap-1 items-center">
-                                                        <input type="number" value={initialAmount} onChange={(e) => setInitialAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
-                                                        <span className="text-[10px] font-bold">MBq</span>
-                                                    </div>
+                                                    <input type="number" value={initialAmount} onChange={(e) => setInitialAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-medium text-slate-600 mb-1">目標量 (N)</label>
                                                     <input type="number" disabled={mainMode !== 'time'} value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm disabled:bg-slate-100" />
                                                 </div>
                                             </div>
-                                            {mainMode === 'amount' && (
-                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                    <label className="block text-[10px] font-bold text-blue-800 mb-1">経過時間指定</label>
-                                                    <div className="flex gap-2">
-                                                        <input type="number" value={elapsedTime} onChange={(e) => setElapsedTime(Number(e.target.value))} className="flex-1 px-2 py-1.5 border border-blue-200 rounded text-sm" />
-                                                        <select value={elapsedTimeUnit} onChange={(e) => setElapsedTimeUnit(e.target.value)} className="w-20 px-1 py-1.5 border border-blue-200 rounded text-xs bg-white">
-                                                            {Object.entries(TIME_UNITS).map(([k, u]) => <option key={k} value={k}>{u.label}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 
@@ -464,18 +470,9 @@
                                         </div>
                                     </div>
                                 </section>
-
-                                <section className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                    <h3 className="text-[10px] font-bold text-slate-500 flex items-center gap-2 mb-2"><Info className="w-3 h-3" /> 核種</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {presets.map((item) => (
-                                            <button key={item.id} onClick={() => { setHalfLife(item.value); setHalfLifeUnit(item.unit); }} className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-600 text-xs rounded border border-slate-200 transition-colors">{item.label}</button>
-                                        ))}
-                                    </div>
-                                </section>
                             </div>
 
-                            <div className="lg:col-span-7 space-y-6">
+                            <div className="lg:col-span-7 space-y-6 lg:col-span-12 print:w-full">
                                 <section className="space-y-4">
                                     <div className={`bg-white p-5 rounded-xl shadow-sm border-l-4 ${mainMode.includes('time') ? 'border-amber-500' : 'border-blue-500'}`}>
                                         <p className="text-[10px] text-slate-500 mb-1">
@@ -484,7 +481,7 @@
                                         <p className={`text-2xl font-bold ${mainMode.includes('time') ? 'text-amber-600' : 'text-blue-600'}`}>
                                             {results ? (mainMode.includes('time') ? (isDetailedTime ? formatDurationDetailed(results.elapsedInSeconds) : formatDurationSimple(results.elapsedInSeconds)) : formatNumber(results.remaining)) : '-'}
                                         </p>
-                                        <div className="flex justify-between items-center mt-2">
+                                        <div className="flex justify-between items-center mt-2 no-print">
                                             <p className="text-[10px] text-slate-400">計算点に対する割合: {results ? results.percentage.toFixed(4) : '-'} %</p>
                                             <label className="inline-flex items-center gap-1 cursor-pointer">
                                                 <input type="checkbox" checked={isDetailedTime} onChange={(e) => setIsDetailedTime(e.target.checked)} className="w-3 h-3" />
@@ -494,61 +491,73 @@
                                     </div>
 
                                     {/* 到着予測日時 */}
-                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                        <div className="space-y-3">
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 print:bg-white print:border-slate-800">
+                                        <div className="space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-[10px] text-slate-500"><Clock className="w-3 h-3"/> 時計1（基準）予測日時</div>
-                                                <span className="text-sm font-mono text-slate-700">{results ? formatDate(results.targetDateObj) : '-'}</span>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-600"><Clock className="w-3 h-3"/> 時計1（基準）予測日時</div>
+                                                <span className="text-sm md:text-lg font-mono text-slate-700">{results ? formatDate(results.targetDateObj) : '-'}</span>
                                             </div>
-                                            <div className="h-px bg-slate-200 w-full"></div>
+                                            <div className="h-px bg-slate-200 w-full print:bg-slate-400"></div>
                                             <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2 text-[11px] font-bold text-blue-600"><Clock className="w-4 h-4"/> 時計2（補正後）予測日時</div>
-                                                <span className="text-lg font-mono font-bold text-blue-700">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
+                                                <div className="flex items-center gap-2 text-[12px] font-bold text-blue-600"><Clock className="w-4 h-4"/> 時計2（補正後）予測日時</div>
+                                                <span className="text-xl md:text-3xl font-mono font-bold text-blue-700">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* 誤差範囲の表示 (time2モードのみ) */}
+                                    {/* 誤差範囲の表示 */}
                                     {mainMode === 'time2' && results && results.plusResults && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <p className="text-[10px] font-bold text-indigo-600">誤差上限 (+{marginPercent}%)</p>
                                                     <span className="text-xs font-bold text-slate-700">{formatNumber(results.plusResults.amount)} MBq</span>
                                                 </div>
-                                                <div className="space-y-1 text-[9px]">
+                                                <div className="space-y-1 text-[10px]">
                                                     <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.plusResults.date)}</span></div>
-                                                    <div className="flex justify-between font-bold text-indigo-700"><span>時計2:</span><span>{formatDate(results.plusResults.adjustedDate)}</span></div>
+                                                    <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em]">{formatDate(results.plusResults.adjustedDate)}</span></div>
                                                 </div>
                                             </div>
-                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm">
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-indigo-400 shadow-sm print:border-slate-400">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <p className="text-[10px] font-bold text-indigo-600">誤差下限 (-{marginPercent}%)</p>
                                                     <span className="text-xs font-bold text-slate-700">{formatNumber(results.minusResults.amount)} MBq</span>
                                                 </div>
-                                                <div className="space-y-1 text-[9px]">
+                                                <div className="space-y-1 text-[10px]">
                                                     <div className="flex justify-between text-slate-500"><span>時計1:</span><span>{formatDate(results.minusResults.date)}</span></div>
-                                                    <div className="flex justify-between font-bold text-indigo-700"><span>時計2:</span><span>{formatDate(results.minusResults.adjustedDate)}</span></div>
+                                                    <div className="flex justify-between font-bold text-indigo-700 items-center"><span>時計2:</span><span className="text-[1.3em]">{formatDate(results.minusResults.adjustedDate)}</span></div>
                                                 </div>
                                             </div>
                                         </div>
                                     )}
 
                                     {mainMode === 'time2' && results && results.plusResults && (
-                                        <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2">
-                                            <AlertCircle className="w-4 h-4 text-indigo-500 mt-0.5" />
-                                            <div className="text-[10px] text-indigo-700 leading-relaxed">
-                                                時計2の許容範囲帯 ({marginPercent}%) :<br/>
-                                                <span className="font-bold text-sm tracking-tight">{formatDate(results.plusResults.adjustedDate)}</span> 〜 <span className="font-bold text-sm tracking-tight">{formatDate(results.minusResults.adjustedDate)}</span>
+                                        <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2 print:bg-white print:border-slate-800">
+                                            <AlertCircle className="w-5 h-5 text-indigo-500 mt-0.5 no-print" />
+                                            <div className="text-[11px] text-indigo-700 leading-relaxed print:text-slate-900">
+                                                <span className="font-bold border-b border-indigo-300">時計2 許容範囲帯 (±{marginPercent}%) :</span><br/>
+                                                <div className="mt-1 flex items-baseline gap-2">
+                                                    <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.plusResults.adjustedDate).split(' ')[1]}</span>
+                                                    <span className="text-slate-400">〜</span>
+                                                    <span className="text-2xl font-bold font-mono tracking-tight">{formatDate(results.minusResults.adjustedDate).split(' ')[1]}</span>
+                                                </div>
+                                                <div className="mt-1 text-[10px] opacity-70">
+                                                    日付: {formatDate(results.plusResults.adjustedDate).split(' ')[0]}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
                                 </section>
 
-                                <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                                <section className="no-print bg-white p-5 rounded-xl shadow-sm border border-slate-200">
                                     <h3 className="font-bold text-xs text-slate-700 flex items-center gap-2 mb-4"><Activity className="w-4 h-4 text-slate-400" /> 減衰グラフ</h3>
                                     <Graph />
                                 </section>
+
+                                {/* 印刷用フッター */}
+                                <div className="print-only mt-12 pt-4 border-t border-slate-300 text-[10px] text-slate-500 text-center">
+                                    放射性医薬品減衰計算システム - 本資料は計算上の予測値です。実際の測定値と異なる場合があります。
+                                </div>
                             </div>
                         </div>
                     </div>
