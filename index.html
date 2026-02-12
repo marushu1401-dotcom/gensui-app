@@ -23,7 +23,7 @@
             .no-print { display: none !important; }
             body { 
                 background-color: white !important; 
-                zoom: 0.85; /* 1枚に収めるため少し縮小 */
+                zoom: 0.85; 
             }
             .print-only { display: block !important; }
             .print-container { 
@@ -66,9 +66,7 @@
 
         const Activity = (props) => <Icon {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></Icon>;
         const Calculator = (props) => <Icon {...props}><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></Icon>;
-        const Info = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></Icon>;
         const RefreshCw = (props) => <Icon {...props}><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></Icon>;
-        const CalendarIcon = (props) => <Icon {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></Icon>;
         const Hourglass = (props) => <Icon {...props}><path d="M5 22h14"></path><path d="M5 2h14"></path><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"></path><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"></path></Icon>;
         const LineChart = (props) => <Icon {...props}><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></Icon>;
         const AlertCircle = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></Icon>;
@@ -120,56 +118,52 @@
         };
 
         function App() {
-            const [initialAmount, setInitialAmount] = useState(1000);
-            const [halfLife, setHalfLife] = useState(109.77);
-            const [halfLifeUnit, setHalfLifeUnit] = useState('minutes');
-            const [isDetailedTime, setIsDetailedTime] = useState(false);
-            const [baseDate, setBaseDate] = useState(() => {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                return now.toISOString().slice(0, 19);
-            });
-
-            const [refAmount, setRefAmount] = useState(1000);
-            const [refDate, setRefDate] = useState(() => {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                return now.toISOString().slice(0, 19);
-            });
-            const [targetActivityDate, setTargetActivityDate] = useState(() => {
-                const now = new Date();
-                now.setHours(now.getHours() + 1);
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                return now.toISOString().slice(0, 19);
-            });
-
-            const [minusAmount, setMinusAmount] = useState(0);
-            const [minusDate, setMinusDate] = useState(() => {
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                return now.toISOString().slice(0, 19);
-            });
-
-            const [clockDrift, setClockDrift] = useState(0);
-            const [targetAmount, setTargetAmount] = useState(500);
-            const [marginPercent, setMarginPercent] = useState(5);
-
-            const [presets] = useState([{ id: '1', label: '18F', value: 109.77, unit: 'minutes' }]);
             const [mainMode, setMainMode] = useState('amount');
-            const [calcMode, setCalcMode] = useState('relative');
-            const [elapsedTime, setElapsedTime] = useState(60);
-            const [elapsedTimeUnit, setElapsedTimeUnit] = useState('minutes');
-            const [targetDateInput, setTargetDateInput] = useState(() => {
+            const [halfLife] = useState(109.77); // 18F
+            const [isDetailedTime, setIsDetailedTime] = useState(false);
+
+            const getNowISO = () => {
                 const now = new Date();
-                now.setHours(now.getHours() + 1);
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
                 return now.toISOString().slice(0, 19);
-            });
+            };
+
+            const getOffsetNowISO = (hours) => {
+                const now = new Date();
+                now.setHours(now.getHours() + hours);
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                return now.toISOString().slice(0, 19);
+            }
+
+            // --- 各タブの独立したステート ---
+            
+            // Tab 1: 残存量を求める（経過時間）
+            const [amtInitial, setAmtInitial] = useState(1000);
+            const [amtBaseDate, setAmtBaseDate] = useState(getNowISO());
+            const [amtElapsedTime, setAmtElapsedTime] = useState(60);
+            const [amtElapsedTimeUnit, setAmtElapsedTimeUnit] = useState('minutes');
+
+            // Tab 2: 時間を求める
+            const [timeInitial, setTimeInitial] = useState(1000);
+            const [timeBaseDate, setTimeBaseDate] = useState(getNowISO());
+            const [timeTargetAmount, setTimeTargetAmount] = useState(500);
+
+            // Tab 3: 放射能量を求める（時刻指定）
+            const [actRefAmount, setActRefAmount] = useState(1000);
+            const [actRefDate, setActRefDate] = useState(getNowISO());
+            const [actTargetDate, setActTargetDate] = useState(getOffsetNowISO(1));
+
+            // Tab 4: 時間を求める (140)
+            const [t140RefAmount, setT140RefAmount] = useState(1000);
+            const [t140RefDate, setT140RefDate] = useState(getNowISO());
+            const [t140MinusAmount, setT140MinusAmount] = useState(0);
+            const [t140MinusDate, setT140MinusDate] = useState(getNowISO());
+            const [t140TargetAmount, setT140TargetAmount] = useState(500);
+            const [t140MarginPercent, setT140MarginPercent] = useState(5);
+            const [t140ClockDrift, setT140ClockDrift] = useState(0);
 
             const results = useMemo(() => {
-                const hlSeconds = halfLife * TIME_UNITS[halfLifeUnit].toSeconds;
-                if (hlSeconds <= 0) return null;
-
+                const hlSec = halfLife * 60; 
                 let elapsedInSeconds = 0;
                 let currentRemaining = 0;
                 let baseDateObj = new Date();
@@ -177,131 +171,104 @@
                 let plusResults = null;
                 let minusResults = null;
                 let effectiveStartAmount = 0;
-
-                const rDateObj = new Date(refDate);
-                const mDateObj = new Date(minusDate);
+                let baseValForStats = 0;
 
                 if (mainMode === 'amount') {
-                    baseDateObj = new Date(baseDate);
-                    if (calcMode === 'relative') {
-                        elapsedInSeconds = elapsedTime * TIME_UNITS[elapsedTimeUnit].toSeconds;
-                        targetDateObj = new Date(baseDateObj.getTime() + elapsedInSeconds * 1000);
-                    } else {
-                        targetDateObj = new Date(targetDateInput);
-                        elapsedInSeconds = (targetDateObj.getTime() - baseDateObj.getTime()) / 1000;
-                    }
-                    currentRemaining = initialAmount * Math.pow(0.5, elapsedInSeconds / hlSeconds);
+                    baseDateObj = new Date(amtBaseDate);
+                    elapsedInSeconds = amtElapsedTime * TIME_UNITS[amtElapsedTimeUnit].toSeconds;
+                    targetDateObj = new Date(baseDateObj.getTime() + elapsedInSeconds * 1000);
+                    currentRemaining = amtInitial * Math.pow(0.5, elapsedInSeconds / hlSec);
+                    baseValForStats = amtInitial;
                 } else if (mainMode === 'time') {
-                    baseDateObj = new Date(baseDate);
-                    if (initialAmount <= 0 || targetAmount <= 0) {
-                        elapsedInSeconds = 0;
-                        currentRemaining = initialAmount;
-                    } else {
-                        const ratio = targetAmount / initialAmount;
-                        elapsedInSeconds = -hlSeconds * Math.log2(ratio);
+                    baseDateObj = new Date(timeBaseDate);
+                    if (timeInitial > 0 && timeTargetAmount > 0) {
+                        const ratio = timeTargetAmount / timeInitial;
+                        elapsedInSeconds = -hlSec * Math.log2(ratio);
                     }
                     targetDateObj = new Date(baseDateObj.getTime() + elapsedInSeconds * 1000);
-                    currentRemaining = targetAmount;
+                    currentRemaining = timeTargetAmount;
+                    baseValForStats = timeInitial;
                 } else if (mainMode === 'activity') {
-                    const rDate = rDateObj;
-                    const tDate = new Date(targetActivityDate);
+                    const rDate = new Date(actRefDate);
+                    const tDate = new Date(actTargetDate);
                     elapsedInSeconds = (tDate.getTime() - rDate.getTime()) / 1000;
-                    currentRemaining = refAmount * Math.pow(0.5, elapsedInSeconds / hlSeconds);
+                    currentRemaining = actRefAmount * Math.pow(0.5, elapsedInSeconds / hlSec);
                     baseDateObj = rDate;
                     targetDateObj = tDate;
+                    baseValForStats = actRefAmount;
                 } else if (mainMode === 'time2') {
-                    const rDate = rDateObj;
-                    const mDate = mDateObj;
+                    const rDate = new Date(t140RefDate);
+                    const mDate = new Date(t140MinusDate);
+                    const elapMtoR = (rDate.getTime() - mDate.getTime()) / 1000;
+                    const elapMinusAtRef = t140MinusAmount * Math.pow(0.5, elapMtoR / hlSec);
+                    effectiveStartAmount = t140RefAmount - elapMinusAtRef;
+                    baseValForStats = effectiveStartAmount;
+
+                    const calcT = (amt) => (effectiveStartAmount > 0 && amt > 0) ? -hlSec * Math.log2(amt / effectiveStartAmount) : 0;
+
+                    elapsedInSeconds = calcT(t140TargetAmount);
                     baseDateObj = rDate;
-                    const elapsedMinusToRef = (rDate.getTime() - mDate.getTime()) / 1000;
-                    const effectiveMinusAmountAtRef = minusAmount * Math.pow(0.5, elapsedMinusToRef / hlSeconds);
-                    effectiveStartAmount = refAmount - effectiveMinusAmountAtRef;
-
-                    const calcTimeForAmt = (amt) => {
-                        if (effectiveStartAmount <= 0 || amt <= 0) return 0;
-                        const ratio = amt / effectiveStartAmount;
-                        return -hlSeconds * Math.log2(ratio);
-                    };
-
-                    elapsedInSeconds = calcTimeForAmt(targetAmount);
                     targetDateObj = new Date(rDate.getTime() + elapsedInSeconds * 1000);
-                    currentRemaining = targetAmount;
+                    currentRemaining = t140TargetAmount;
 
-                    const amtPlus = targetAmount * (1 + marginPercent / 100);
-                    const elapsedPlus = calcTimeForAmt(amtPlus);
-                    const datePlus = new Date(rDate.getTime() + elapsedPlus * 1000);
-                    plusResults = {
-                        amount: amtPlus,
-                        elapsed: elapsedPlus,
-                        date: datePlus,
-                        adjustedDate: new Date(datePlus.getTime() + clockDrift * 1000)
+                    const getRes = (m) => {
+                        const a = t140TargetAmount * (1 + m / 100);
+                        const e = calcT(a);
+                        const d = new Date(rDate.getTime() + e * 1000);
+                        return { amount: a, elapsed: e, date: d, adj: new Date(d.getTime() + t140ClockDrift * 1000) };
                     };
-
-                    const amtMinus = targetAmount * (1 - marginPercent / 100);
-                    const elapsedMinus = calcTimeForAmt(amtMinus);
-                    const dateMinus = new Date(rDate.getTime() + elapsedMinus * 1000);
-                    minusResults = {
-                        amount: amtMinus,
-                        elapsed: elapsedMinus,
-                        date: dateMinus,
-                        adjustedDate: new Date(dateMinus.getTime() + clockDrift * 1000)
-                    };
+                    plusResults = getRes(t140MarginPercent);
+                    minusResults = getRes(-t140MarginPercent);
                 }
-
-                const baseValForStats = (mainMode === 'activity' || mainMode === 'time2') 
-                    ? (mainMode === 'time2' ? effectiveStartAmount : refAmount) 
-                    : initialAmount;
 
                 return {
                     remaining: currentRemaining,
                     percentage: baseValForStats !== 0 ? (currentRemaining / baseValForStats) * 100 : 0,
-                    halfLifeInSeconds: hlSeconds,
                     elapsedInSeconds,
                     baseDateObj,
                     targetDateObj,
                     effectiveStartAmount,
-                    adjustedBaseDateObj: new Date(baseDateObj.getTime() + clockDrift * 1000),
-                    adjustedMinusDateObj: new Date(mDateObj.getTime() + clockDrift * 1000),
-                    adjustedTargetDateObj: new Date(targetDateObj.getTime() + clockDrift * 1000),
+                    adjBase: new Date(baseDateObj.getTime() + t140ClockDrift * 1000),
+                    adjMinus: new Date(new Date(t140MinusDate).getTime() + t140ClockDrift * 1000),
+                    adjTarget: new Date(targetDateObj.getTime() + t140ClockDrift * 1000),
                     plusResults,
                     minusResults,
-                    baseValForStats
+                    baseValForStats,
+                    hlSec
                 };
-            }, [initialAmount, halfLife, halfLifeUnit, mainMode, calcMode, elapsedTime, elapsedTimeUnit, baseDate, targetDateInput, targetAmount, refAmount, refDate, targetActivityDate, marginPercent, clockDrift, minusAmount, minusDate]);
+            }, [mainMode, amtInitial, amtBaseDate, amtElapsedTime, amtElapsedTimeUnit, timeInitial, timeBaseDate, timeTargetAmount, actRefAmount, actRefDate, actTargetDate, t140RefAmount, t140RefDate, t140MinusAmount, t140MinusDate, t140TargetAmount, t140MarginPercent, t140ClockDrift]);
 
             const chartData = useMemo(() => {
                 if (!results) return [];
                 const t = results.elapsedInSeconds;
-                const hl = results.halfLifeInSeconds;
-                const baseVal = results.baseValForStats;
-                let minTime = Math.min(0, t);
-                let maxTime = Math.max(hl * 3, t * 1.5);
-                if (t >= 0) { minTime = -hl * 0.5; maxTime = Math.max(t * 1.2, hl * 3); }
-                else { minTime = t * 1.2; maxTime = hl * 3; }
-                const points = [];
+                const hl = results.hlSec;
+                const bv = results.baseValForStats;
+                let minT = Math.min(0, t), maxT = Math.max(hl * 3, t * 1.5);
+                if (t >= 0) { minT = -hl * 0.5; maxT = Math.max(t * 1.2, hl * 3); }
+                else { minT = t * 1.2; maxT = hl * 3; }
+                const pts = [];
                 for (let i = 0; i <= 100; i++) {
-                    const time = minTime + ((maxTime - minTime) / 100) * i;
-                    points.push({ t: time, amount: baseVal * Math.pow(0.5, time / hl) });
+                    const time = minT + ((maxT - minT) / 100) * i;
+                    pts.push({ t: time, amount: bv * Math.pow(0.5, time / hl) });
                 }
-                return { points, minTime, maxTime, totalRange: maxTime - minTime };
+                return { points: pts, minT, maxT, total: maxT - minT };
             }, [results]);
 
-            const handlePrint = () => { window.print(); };
+            const handlePrint = () => window.print();
 
             const Graph = () => {
                 if (!results || chartData.points.length === 0) return null;
-                const width = 600, height = 240, padding = 40;
-                const baseVal = results.baseValForStats;
-                const yAxisMax = Math.max(baseVal, ...chartData.points.map(p => p.amount)) * 1.1;
-                const getX = (t) => padding + ((t - chartData.minTime) / chartData.totalRange) * (width - padding * 2);
-                const getY = (amt) => height - padding - (amt / yAxisMax) * (height - padding * 2);
-                const pathD = `M ${chartData.points.map(p => `${getX(p.t)},${getY(p.amount)}`).join(' L ')}`;
+                const width = 600, height = 240, pad = 40;
+                const bv = results.baseValForStats;
+                const yMax = Math.max(bv, ...chartData.points.map(p => p.amount)) * 1.1;
+                const getX = (t) => pad + ((t - chartData.minT) / chartData.total) * (width - pad * 2);
+                const getY = (a) => height - pad - (a / yMax) * (height - pad * 2);
                 return (
                     <div className="w-full bg-white rounded-lg shadow-inner border border-slate-200 no-print">
-                        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto text-[10px]">
-                            <line x1={padding} y1={height-padding} x2={width-padding} y2={height-padding} stroke="#cbd5e1" strokeWidth="2" />
-                            <line x1={padding} y1={padding} x2={padding} y2={height-padding} stroke="#cbd5e1" strokeWidth="2" />
-                            <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="2.5" />
+                        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+                            <line x1={pad} y1={height-pad} x2={width-pad} y2={height-pad} stroke="#cbd5e1" strokeWidth="2" />
+                            <line x1={pad} y1={pad} x2={pad} y2={height-pad} stroke="#cbd5e1" strokeWidth="2" />
+                            <path d={`M ${chartData.points.map(p => `${getX(p.t)},${getY(p.amount)}`).join(' L ')}`} fill="none" stroke="#3b82f6" strokeWidth="2.5" />
                             <circle cx={getX(results.elapsedInSeconds)} cy={getY(results.remaining)} r="5" fill="#ef4444" stroke="white" strokeWidth="2" />
                         </svg>
                     </div>
@@ -309,43 +276,49 @@
             };
 
             return (
-                <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
+                <div className="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-800">
                     <div className="max-w-6xl mx-auto print-container">
                         <header className="mb-6 flex items-center justify-between no-print">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-blue-600 rounded-lg shadow-lg"><Activity className="w-6 h-6 text-white" /></div>
-                                <div>
-                                    <h1 className="text-xl font-bold text-slate-900">減衰計算表</h1>
-                                    <p className="text-slate-500 text-xs">Radioactive Decay Calculator</p>
-                                </div>
+                                <div><h1 className="text-xl font-bold">減衰計算表 (18F)</h1></div>
                             </div>
                         </header>
 
                         <div className="print-only border-b-2 border-slate-900 mb-6 pb-2">
                             <h1 className="text-xl font-bold">減衰計算 結果報告書</h1>
                             <div className="flex justify-between mt-1 text-[10px]">
-                                <span>計算項目: {mainMode === 'amount' ? '残存量' : mainMode === 'time' ? '時間' : mainMode === 'activity' ? '放射能量' : '時間（ 140 ）'}</span>
-                                <span>核種: 18F (109.77分)</span>
+                                <span>モード: {
+                                    mainMode === 'amount' ? '残存量を求める（経過時間）' : 
+                                    mainMode === 'activity' ? '放射能量を求める（時刻指定）' :
+                                    mainMode === 'time' ? '時間' : '時間(140)'
+                                }</span>
                                 <span>出力日時: {new Date().toLocaleString()}</span>
                             </div>
                         </div>
 
-                        {/* タブナビゲーション */}
                         <div className="flex flex-wrap md:flex-nowrap rounded-xl bg-white shadow-sm border border-slate-200 p-1 mb-6 gap-1 no-print">
                             {[
-                                { id: 'amount', label: '残存量を求める', icon: Calculator },
+                                { id: 'amount', label: '残存量を求める', sub: '（経過時間）', icon: Calculator },
+                                { id: 'activity', label: '放射能量を求める', sub: '（時刻指定）', icon: LineChart },
                                 { id: 'time', label: '時間を求める', icon: Hourglass },
-                                { id: 'activity', label: '放射能量を求める', icon: LineChart },
                                 { id: 'time2', label: '時間を求める（ 140 ）', icon: Hourglass },
                             ].map(tab => (
-                                <button key={tab.id} onClick={() => setMainMode(tab.id)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-lg text-[11px] font-bold transition-all ${mainMode === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-                                    <tab.icon className="w-4 h-4" /> {tab.label}
+                                <button 
+                                    key={tab.id} 
+                                    onClick={() => setMainMode(tab.id)} 
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-lg font-bold transition-all ${mainMode === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    <tab.icon className="w-4 h-4 shrink-0" /> 
+                                    <div className="flex flex-col items-start leading-tight">
+                                        <span className="text-[11px]">{tab.label}</span>
+                                        {tab.sub && <span className="text-[9px] font-normal opacity-80">{tab.sub}</span>}
+                                    </div>
                                 </button>
                             ))}
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            {/* パラメータ設定カラム */}
                             <div className="lg:col-span-5 space-y-6">
                                 <section className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 no-print"></div>
@@ -353,9 +326,9 @@
                                         <h2 className="font-bold text-sm text-slate-700">設定条件</h2>
                                         <div className="flex items-center gap-3 no-print">
                                             {mainMode === 'time2' && (
-                                                <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                                                    <label className="text-[10px] font-bold text-blue-800">時計2ズレ(秒):</label>
-                                                    <input type="number" value={clockDrift} onChange={(e) => setClockDrift(Number(e.target.value))} className="w-14 text-xs font-bold text-blue-700 text-center bg-transparent" />
+                                                <div className="flex items-center gap-2 bg-blue-50 px-2 py-1 rounded border border-blue-100 shadow-sm">
+                                                    <label className="text-[10px] font-bold">時刻の補正(秒):</label>
+                                                    <input type="number" value={t140ClockDrift} onChange={(e) => setT140ClockDrift(Number(e.target.value))} className="w-14 text-xs font-bold text-blue-700 text-center bg-transparent" />
                                                 </div>
                                             )}
                                             <button onClick={handlePrint} className="bg-slate-800 text-white px-2.5 py-1.5 rounded text-[10px] font-bold shadow-sm flex items-center gap-1">
@@ -365,138 +338,150 @@
                                     </div>
 
                                     <div className="space-y-4">
-                                        {(mainMode === 'activity' || mainMode === 'time2') ? (
+                                        {mainMode === 'amount' && (
                                             <React.Fragment>
-                                                {/* 既知の情報セクション */}
-                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 print:bg-white print:border-slate-300">
-                                                    <label className="block text-[10px] font-bold text-blue-800 mb-1">既知の情報 (基準データ)</label>
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input type="number" value={refAmount} onChange={(e) => setRefAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
-                                                        <span className="text-xs font-bold text-blue-600 print:text-black">MBq</span>
-                                                    </div>
-                                                    <input type="datetime-local" step="1" value={refDate} onChange={(e) => setRefDate(e.target.value)} className="w-full text-xs font-bold bg-transparent mb-1" />
-                                                    {mainMode === 'time2' && (
-                                                        <div className="mt-2 pt-2 border-t border-blue-100 flex flex-col gap-0.5">
-                                                            <span className="text-[9px] text-blue-500 font-bold">時計2反映:</span>
-                                                            <span className="text-[0.9rem] font-bold text-blue-700 tracking-tight">{results ? formatDate(results.adjustedBaseDateObj) : '-'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* 残量セクション */}
-                                                {mainMode === 'time2' && (
-                                                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100 print:bg-white print:border-slate-300">
-                                                        <label className="block text-[10px] font-bold text-indigo-800 mb-1">残量 (差し引き分)</label>
-                                                        <div className="flex gap-2 mb-1">
-                                                            <input type="number" value={minusAmount} onChange={(e) => setMinusAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
-                                                            <span className="text-xs font-bold text-indigo-600 print:text-black">MBq</span>
-                                                        </div>
-                                                        <input type="datetime-local" step="1" value={minusDate} onChange={(e) => setMinusDate(e.target.value)} className="w-full text-xs font-bold bg-transparent mb-1" />
-                                                        <div className="mt-2 pt-2 border-t border-indigo-100 flex flex-col gap-0.5">
-                                                            <span className="text-[9px] text-indigo-500 font-bold">時計2反映:</span>
-                                                            <span className="text-[0.9rem] font-bold text-indigo-700 tracking-tight">{results ? formatDate(results.adjustedMinusDateObj) : '-'}</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* 目標値セクション */}
-                                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 print:bg-white print:border-slate-300">
-                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">目標値設定</label>
-                                                    <div className="flex gap-2 mb-1">
-                                                        <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(Math.max(0, Number(e.target.value)))} className="w-full text-sm font-bold bg-transparent" />
-                                                        <span className="text-xs font-bold print:text-black">MBq</span>
-                                                    </div>
-                                                    {mainMode === 'time2' && clockDrift !== 0 && (
-                                                        <div className="mt-2 pt-2 border-t border-slate-200 flex flex-col gap-0.5">
-                                                            <span className="text-[9px] text-slate-400 font-bold">到達時の時計2(参考):</span>
-                                                            <span className="text-[0.9rem] font-bold text-slate-600 tracking-tight">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </React.Fragment>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white print:border-slate-300">
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white">
                                                     <label className="block text-[10px] font-bold text-slate-500 mb-1">基準日時 (t=0)</label>
-                                                    <input type="datetime-local" step="1" value={baseDate} onChange={(e) => setBaseDate(e.target.value)} className="w-full text-sm font-bold bg-transparent" />
+                                                    <input type="datetime-local" step="1" value={amtBaseDate} onChange={(e) => setAmtBaseDate(e.target.value)} className="w-full text-sm font-bold bg-transparent" />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white print:border-slate-300">
+                                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white">
                                                         <label className="block text-[10px] font-bold text-slate-500 mb-1">初期量 (N₀)</label>
-                                                        <input type="number" value={initialAmount} onChange={(e) => setInitialAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
+                                                        <input type="number" value={amtInitial} onChange={(e) => setAmtInitial(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
                                                     </div>
-                                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white print:border-slate-300">
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">目標量 (N)</label>
-                                                        <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
+                                                    <div className="bg-blue-50 p-3 rounded border border-blue-200 print:bg-white">
+                                                        <label className="block text-[10px] font-bold text-blue-700 mb-1">経過時間 (分)</label>
+                                                        <input type="number" value={amtElapsedTime} onChange={(e) => setAmtElapsedTime(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </React.Fragment>
                                         )}
-                                        
-                                        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center print:pt-0">
-                                            <label className="text-[10px] text-slate-500">半減期: 109.77 分 (18F)</label>
-                                        </div>
+
+                                        {mainMode === 'time' && (
+                                            <React.Fragment>
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">基準日時 (t=0)</label>
+                                                    <input type="datetime-local" step="1" value={timeBaseDate} onChange={(e) => setTimeBaseDate(e.target.value)} className="w-full text-sm font-bold bg-transparent" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white">
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1">初期量 (N₀)</label>
+                                                        <input type="number" value={timeInitial} onChange={(e) => setTimeInitial(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
+                                                    </div>
+                                                    <div className="bg-amber-50 p-3 rounded border border-amber-200 print:bg-white">
+                                                        <label className="block text-[10px] font-bold text-amber-700 mb-1">目標量 (N)</label>
+                                                        <input type="number" value={timeTargetAmount} onChange={(e) => setTimeTargetAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent" />
+                                                    </div>
+                                                </div>
+                                            </React.Fragment>
+                                        )}
+
+                                        {mainMode === 'activity' && (
+                                            <React.Fragment>
+                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-blue-800 mb-1">基準となる放射能量と日時</label>
+                                                    <input type="number" value={actRefAmount} onChange={(e) => setActRefAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent mb-1" />
+                                                    <input type="datetime-local" step="1" value={actRefDate} onChange={(e) => setActRefDate(e.target.value)} className="w-full text-xs font-bold bg-transparent" />
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">求めたい日時</label>
+                                                    <input type="datetime-local" step="1" value={actTargetDate} onChange={(e) => setActTargetDate(e.target.value)} className="w-full text-sm font-bold bg-transparent" />
+                                                </div>
+                                            </React.Fragment>
+                                        )}
+
+                                        {mainMode === 'time2' && (
+                                            <React.Fragment>
+                                                <div className="bg-blue-50 p-3 rounded border border-blue-100 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-blue-800 mb-1">既知の情報 (基準データ)</label>
+                                                    <input type="number" value={t140RefAmount} onChange={(e) => setT140RefAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent mb-1" />
+                                                    <input type="datetime-local" step="1" value={t140RefDate} onChange={(e) => setT140RefDate(e.target.value)} className="w-full text-xs font-bold bg-transparent mb-1" />
+                                                    <div className="mt-1 pt-1 border-t border-blue-100">
+                                                        <span className="text-[9px] text-blue-500 font-bold">時計2反映:</span> 
+                                                        <span className="text-[0.9rem] font-bold text-blue-700 ml-1">{results ? formatDate(results.adjBase) : '-'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-indigo-50 p-3 rounded border border-indigo-100 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-indigo-800 mb-1">残量 (差し引き分)</label>
+                                                    <input type="number" value={t140MinusAmount} onChange={(e) => setT140MinusAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent mb-1" />
+                                                    <input type="datetime-local" step="1" value={t140MinusDate} onChange={(e) => setT140MinusDate(e.target.value)} className="w-full text-xs font-bold bg-transparent mb-1" />
+                                                    <div className="mt-1 pt-1 border-t border-indigo-100">
+                                                        <span className="text-[9px] text-indigo-500 font-bold">時計2反映:</span> 
+                                                        <span className="text-[0.9rem] font-bold text-indigo-700 ml-1">{results ? formatDate(results.adjMinus) : '-'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded border border-slate-200 print:bg-white">
+                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">目標放射能量</label>
+                                                    <input type="number" value={t140TargetAmount} onChange={(e) => setT140TargetAmount(Number(e.target.value))} className="w-full text-sm font-bold bg-transparent mb-2" />
+                                                    <div className="pt-2 border-t border-slate-200">
+                                                        <label className="block text-[10px] font-bold">許容誤差: ±{t140MarginPercent}%</label>
+                                                        <input type="range" min="0" max="20" step="0.1" value={t140MarginPercent} onChange={(e) => setT140MarginPercent(Number(e.target.value))} className="w-full h-2 bg-slate-200 rounded appearance-none accent-blue-600 no-print mt-1" />
+                                                    </div>
+                                                </div>
+                                            </React.Fragment>
+                                        )}
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center print:pt-0">
+                                        <label className="text-[10px] text-slate-500 font-bold italic">18F (半減期: 109.77分)</label>
                                     </div>
                                 </section>
                             </div>
 
-                            {/* 計算結果カラム */}
                             <div className="lg:col-span-7 space-y-4 lg:col-span-12 print:w-full">
                                 <section className="space-y-4">
                                     <div className={`bg-white p-5 rounded-xl shadow-sm border-l-4 ${mainMode.includes('time') ? 'border-amber-500' : 'border-blue-500'}`}>
-                                        <p className="text-[10px] text-slate-500 mb-1">経過時間 / 残存割合</p>
+                                        <p className="text-[10px] text-slate-500 mb-1">{mainMode.includes('time') ? '目標放射能量に到達するまでの時間' : '算出された放射能量'}</p>
                                         <p className={`text-2xl font-bold ${mainMode.includes('time') ? 'text-amber-600' : 'text-blue-600'}`}>
                                             {results ? (mainMode.includes('time') ? (isDetailedTime ? formatDurationDetailed(results.elapsedInSeconds) : formatDurationSimple(results.elapsedInSeconds)) : formatNumber(results.remaining) + " MBq") : '-'}
                                         </p>
-                                        <div className="mt-1 text-[10px] text-slate-400 font-mono">
-                                            開始点比: {results ? results.percentage.toFixed(4) : '-'} %
+                                        <div className="mt-1 flex justify-between items-center">
+                                            <span className="text-[10px] text-slate-400 font-mono">基準比: {results ? results.percentage.toFixed(4) : '-'} %</span>
+                                            <label className="inline-flex items-center gap-1 cursor-pointer no-print">
+                                                <input type="checkbox" checked={isDetailedTime} onChange={(e) => setIsDetailedTime(e.target.checked)} className="w-3 h-3" />
+                                                <span className="text-[9px] text-slate-400">詳細表示</span>
+                                            </label>
                                         </div>
                                     </div>
 
-                                    {/* 予測日時カード */}
                                     <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 print:bg-white print:border-slate-800 shadow-sm">
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <div className="text-[11px] font-bold text-slate-600">時計1（基準）予測日時</div>
-                                                <span className="text-sm md:text-lg font-mono text-slate-700 font-bold">{results ? formatDate(results.targetDateObj) : '-'}</span>
+                                                <div className="text-[11px] font-bold text-slate-600">{mainMode === 'time2' ? '時計1（基準）' : '到達予測日時'}</div>
+                                                <span className="text-sm font-mono text-slate-700 font-bold">{results ? formatDate(results.targetDateObj) : '-'}</span>
                                             </div>
-                                            <div className="h-px bg-slate-300 w-full print:bg-slate-600"></div>
-                                            <div className="flex justify-between items-center">
-                                                <div className="text-[12px] font-bold text-blue-600">時計2（補正後）予測日時</div>
-                                                <span className="text-xl md:text-2xl font-mono font-bold text-blue-700 tracking-tight">{results ? formatDate(results.adjustedTargetDateObj) : '-'}</span>
-                                            </div>
+                                            {mainMode === 'time2' && (
+                                                <React.Fragment>
+                                                    <div className="h-px bg-slate-300 w-full print:bg-slate-600"></div>
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-[12px] font-bold text-blue-600">時計2（補正後）</div>
+                                                        <span className="text-xl md:text-2xl font-mono font-bold text-blue-700 tracking-tight">{results ? formatDate(results.adjTarget) : '-'}</span>
+                                                    </div>
+                                                </React.Fragment>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* 許容誤差範囲 (140モードのみ) */}
-                                    {mainMode === 'time2' && results && results.plusResults && (
+                                    {mainMode === 'time2' && results.plusResults && (
                                         <React.Fragment>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="bg-white p-3 rounded-lg border-l-4 border-indigo-400 border border-slate-200 shadow-sm print:border-slate-400">
-                                                    <p className="text-[9px] font-bold text-indigo-600 mb-1">上限 (+{marginPercent}%) : {formatNumber(results.plusResults.amount)} MBq</p>
-                                                    <div className="text-[9px] text-slate-500 mb-1">時計1: {formatDate(results.plusResults.date)}</div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold text-indigo-700">時計2(補正後):</span>
-                                                        <span className="text-[1.0rem] font-bold font-mono text-indigo-800 tracking-tighter">{formatDate(results.plusResults.adjustedDate)}</span>
-                                                    </div>
+                                                    <p className="text-[9px] font-bold text-indigo-600 mb-1">上限(+{t140MarginPercent}%): {formatNumber(results.plusResults.amount)} MBq</p>
+                                                    <div className="text-[9px] text-slate-500">時計1: {formatDate(results.plusResults.date)}</div>
+                                                    <div className="text-[10px] font-bold text-indigo-700 mt-1">時計2: <span className="text-sm md:text-base font-mono font-bold text-indigo-800">{formatDate(results.plusResults.adj)}</span></div>
                                                 </div>
                                                 <div className="bg-white p-3 rounded-lg border-l-4 border-indigo-400 border border-slate-200 shadow-sm print:border-slate-400">
-                                                    <p className="text-[9px] font-bold text-indigo-600 mb-1">下限 (-{marginPercent}%) : {formatNumber(results.minusResults.amount)} MBq</p>
-                                                    <div className="text-[9px] text-slate-500 mb-1">時計1: {formatDate(results.minusResults.date)}</div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-bold text-indigo-700">時計2(補正後):</span>
-                                                        <span className="text-[1.0rem] font-bold font-mono text-indigo-800 tracking-tighter">{formatDate(results.minusResults.adjustedDate)}</span>
-                                                    </div>
+                                                    <p className="text-[9px] font-bold text-indigo-600 mb-1">下限(-{t140MarginPercent}%): {formatNumber(results.minusResults.amount)} MBq</p>
+                                                    <div className="text-[9px] text-slate-500">時計1: {formatDate(results.minusResults.date)}</div>
+                                                    <div className="text-[10px] font-bold text-indigo-700 mt-1">時計2: <span className="text-sm md:text-base font-mono font-bold text-indigo-800">{formatDate(results.minusResults.adj)}</span></div>
                                                 </div>
                                             </div>
-
                                             <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 print:bg-white print:border-slate-800">
-                                                <div className="text-[11px] text-indigo-800 w-full text-center">
-                                                    <span className="font-bold border-b border-indigo-300">時計2 許容時間枠</span><br/>
+                                                <div className="text-[11px] text-indigo-800 text-center">
+                                                    <span className="font-bold border-b border-indigo-300">時計2 許容時間枠</span>
                                                     <div className="mt-2 flex items-center justify-center gap-3">
-                                                        <span className="text-xl font-bold font-mono">{formatDate(results.plusResults.adjustedDate).split(' ')[1]}</span>
+                                                        <span className="text-xl font-bold font-mono">{formatDate(results.plusResults.adj).split(' ')[1]}</span>
                                                         <span className="text-xl text-slate-400">〜</span>
-                                                        <span className="text-xl font-bold font-mono">{formatDate(results.minusResults.adjustedDate).split(' ')[1]}</span>
+                                                        <span className="text-xl font-bold font-mono">{formatDate(results.minusResults.adj).split(' ')[1]}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -505,7 +490,7 @@
                                 </section>
 
                                 <section className="no-print bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                    <h3 className="font-bold text-xs text-slate-700 mb-4">減衰推移グラフ</h3>
+                                    <h3 className="font-bold text-xs text-slate-700 mb-4">推移グラフ</h3>
                                     <Graph />
                                 </section>
 
